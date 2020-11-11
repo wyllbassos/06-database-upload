@@ -1,4 +1,4 @@
-import { getRepository, Repository } from 'typeorm';
+import { getRepository } from 'typeorm';
 
 import AppError from '../errors/AppError';
 import Category from '../models/Category';
@@ -6,6 +6,7 @@ import Category from '../models/Category';
 import Transaction from '../models/Transaction';
 
 import CreateCategoryService from './CreateCategoryService';
+import BalanceTransactionsService from './BalanceTransactionsService';
 
 interface Request {
   title: string;
@@ -48,30 +49,9 @@ function checkParms(
 
   checkIfValueIsValid(value);
 
-  console.log(type, value, balance);
-
   if (type === 'outcome' && value > balance) {
     throw new AppError("The account don't have a balance to this transaction");
   }
-}
-
-async function getBalance(
-  transactionRepository: Repository<Transaction>,
-): Promise<number> {
-  const transactions = await transactionRepository.find();
-
-  console.log(transactions);
-
-  const income = transactions
-    .filter(({ type }) => type === 'income')
-    .reduce((total, { value }) => total + value, 0);
-
-  const outcome = transactions
-    .filter(({ type }) => type === 'outcome')
-    .reduce((total, { value }) => total + value, 0);
-
-  const total = income - outcome;
-  return total;
 }
 
 class CreateTransactionService {
@@ -82,12 +62,13 @@ class CreateTransactionService {
     category,
   }: Request): Promise<Transaction> {
     const transactionRepository = getRepository(Transaction);
+    const balanceTransactionsService = new BalanceTransactionsService();
 
-    let categoryOfTransaction = new Category();
-
-    const balance = await getBalance(transactionRepository);
+    const balance = (await balanceTransactionsService.execute()).total;
 
     checkParms({ title, value, type }, balance);
+
+    let categoryOfTransaction = new Category();
 
     if (category) {
       const createCategoryService = new CreateCategoryService();
