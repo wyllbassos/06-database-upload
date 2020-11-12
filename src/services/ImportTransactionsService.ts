@@ -89,8 +89,6 @@ async function checkHeader(filePath: string): Promise<boolean> {
 
 class ImportTransactionsService {
   async execute({ importFilename }: Request): Promise<Transaction[]> {
-    const transactionRepository = getRepository(Transaction);
-
     const createTransactionService = new CreateTransactionService();
 
     const importFilePath = path.join(uploadConfig.directory, importFilename);
@@ -105,6 +103,12 @@ class ImportTransactionsService {
     const transactionsImport = await loadCSV(importFilePath);
 
     const transactions: Transaction[] = [];
+
+    // const promisses = transactionsImport.map(transaction =>
+    //   createTransactionService.execute(transaction),
+    // );
+
+    // const transactions = Promise.all(promisses);
 
     for await (const transactionCreate of transactionsImport) {
       transactions.push(
