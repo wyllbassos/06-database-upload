@@ -84,7 +84,7 @@ class CreateTransactionService {
       type,
       category_id: categoryOfTransaction.id,
     });
-
+    console.log(balance, transaction);
     await transactionRepository.save(transaction);
 
     return transaction;

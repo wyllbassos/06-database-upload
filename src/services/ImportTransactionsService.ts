@@ -1,4 +1,3 @@
-import { getRepository } from 'typeorm';
 import path from 'path';
 import fs from 'fs';
 import csvParse from 'csv-parse';
@@ -87,10 +86,21 @@ async function checkHeader(filePath: string): Promise<boolean> {
   return headerIsOk;
 }
 
+async function execArrayInAsyncFunction(
+  arr: TransactionCreate[],
+): Promise<Transaction[]> {
+  if (arr.length > 0) {
+    const createTransactionService = new CreateTransactionService();
+    const item = arr[0];
+    arr.shift();
+    const ret0 = await createTransactionService.execute(item);
+    return [ret0, ...(await execArrayInAsyncFunction(arr))];
+  }
+  return [];
+}
+
 class ImportTransactionsService {
   async execute({ importFilename }: Request): Promise<Transaction[]> {
-    const createTransactionService = new CreateTransactionService();
-
     const importFilePath = path.join(uploadConfig.directory, importFilename);
 
     const ok = await checkHeader(importFilePath);
@@ -102,19 +112,7 @@ class ImportTransactionsService {
 
     const transactionsImport = await loadCSV(importFilePath);
 
-    const transactions: Transaction[] = [];
-
-    // const promisses = transactionsImport.map(transaction =>
-    //   createTransactionService.execute(transaction),
-    // );
-
-    // const transactions = Promise.all(promisses);
-
-    for await (const transactionCreate of transactionsImport) {
-      transactions.push(
-        await createTransactionService.execute(transactionCreate),
-      );
-    }
+    const transactions = await execArrayInAsyncFunction(transactionsImport);
 
     return transactions;
   }
